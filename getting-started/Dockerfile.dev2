@@ -1,0 +1,23 @@
+## Stage 1 : build with maven builder image with native capabilities
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build-native
+COPY --chown=quarkus:quarkus mvnw /code/mvnw
+COPY --chown=quarkus:quarkus .mvn /code/.mvn
+COPY --chown=quarkus:quarkus pom.xml /code/
+USER quarkus
+WORKDIR /code
+RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.1.2:go-offline
+COPY src /code/src
+#ENV quarkus.jib.jvm-additional-arguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005
+#RUN ./mvnw quarkus:dev -Dsuspend -Ddebug
+#ENTRYPOINT [ "./mvnw", "quarkus:dev", "-Dsuspend=true", "-Ddebug=true" ]
+
+#RUN ./mvnw package -Dquarkus.package.type=mutable-jar
+
+#ENV QUARKUS_LAUNCH_DEVMODE=true
+RUN ./mvnw package
+RUN ./mvnw install
+USER quarkus
+
+#ENTRYPOINT ["./mvnw", "install"]
+ENTRYPOINT ["tail", "-f", "/dev/null"]
+#ENTRYPOINT [ "java", "-jar", "/code/target/quarkus-app/quarkus-run.jar" ]
