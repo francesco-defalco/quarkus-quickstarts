@@ -1,5 +1,5 @@
 ## Stage 1 : build with maven builder image with native capabilities
-FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build-native
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
 COPY --chown=quarkus:quarkus mvnw /code/mvnw
 COPY --chown=quarkus:quarkus .mvn /code/.mvn
 COPY --chown=quarkus:quarkus pom.xml /code/
@@ -7,17 +7,11 @@ USER quarkus
 WORKDIR /code
 RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.1.2:go-offline
 COPY src /code/src
-#ENV quarkus.jib.jvm-additional-arguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005
-#RUN ./mvnw quarkus:dev -Dsuspend -Ddebug
-#ENTRYPOINT [ "./mvnw", "quarkus:dev", "-Dsuspend=true", "-Ddebug=true" ]
+RUN ./mvnw clean package install -Dquarkus.package.type=mutable-jar -DskipTests
+#docker run --rm -p 8080:8080 -p 5005:5005 -e QUARKUS_LAUNCH_DEVMODE=true test
+#mvn quarkus:remote-dev -Ddebug=true -Dquarkus.live-reload.url=http://localhost:8080 -Dquarkus.live-reload.password=123 -Dquarkus.package.type=mutable-jar
+ENV QUARKUS_LAUNCH_DEVMODE=true
+ENV JAVA_ENABLE_DEBUG=true
 
-#RUN ./mvnw package -Dquarkus.package.type=mutable-jar
-
-#ENV QUARKUS_LAUNCH_DEVMODE=true
-RUN ./mvnw package
-RUN ./mvnw install
-USER quarkus
-
-#ENTRYPOINT ["./mvnw", "install"]
-ENTRYPOINT ["tail", "-f", "/dev/null"]
-#ENTRYPOINT [ "java", "-jar", "/code/target/quarkus-app/quarkus-run.jar" ]
+#RUN [ "./mvnw", "quarkus:dev", "-Dsuspend=true", "-Ddebug=true", "-Dquarkus.live-reload.password=123", "-Dquarkus.http.host=0.0.0.0", "-Dquarkus.http.port=8080", "-Dquarkus.package.type=mutable-jar" ]
+ENTRYPOINT [ "java", "-jar","-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005", "-Dquarkus.live-reload.password=123", "-Dquarkus.http.host=0.0.0.0", "-Dquarkus.http.port=8080", "-Dquarkus.package.type=mutable-jar", "/code/target/quarkus-app/quarkus-run.jar"]
