@@ -1,4 +1,18 @@
+# docker build -f Dockerfile.dev -t test .
+# docker run -p 8080:8080 -p 5005:5005 test
+# Run launch.json in "Remote attach mode" with
+        # {
+        #     "type": "java",
+        #     "name": "Remote Attach",
+        #     "request": "attach",
+        #     "hostName": "localhost",
+        #     "port": 5005
+        # }
+# mvn quarkus:remote-dev -Ddebug=false -Dquarkus.live-reload.url=http://localhost:8080 -Dquarkus.live-reload.password=123 -Dquarkus.package.type=mutable-jar
+
+
 ## Stage 1 : build with maven builder image with native capabilities
+
 FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
 COPY --chown=quarkus:quarkus mvnw /code/mvnw
 COPY --chown=quarkus:quarkus .mvn /code/.mvn
@@ -7,8 +21,6 @@ USER quarkus
 WORKDIR /code
 RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.1.2:go-offline
 COPY src /code/src
-#docker run --rm -p 8080:8080 -p 5005:5005 -e QUARKUS_LAUNCH_DEVMODE=true test
-#mvn quarkus:remote-dev -Ddebug=true -Dquarkus.live-reload.url=http://localhost:8080 -Dquarkus.live-reload.password=123 -Dquarkus.package.type=mutable-jar
 ENV QUARKUS_LAUNCH_DEVMODE=true
 ENV JAVA_ENABLE_DEBUG=true
 
@@ -16,9 +28,5 @@ EXPOSE 5005
 EXPOSE 8080
 
 RUN ./mvnw clean package install -Dquarkus.package.type=mutable-jar -DskipTests
-
-# docker build -f Dockerfile.dev2 -t test .
-# docker run -p 8080:8080 -p 5005:5005 test
-# mvn quarkus:remote-dev -Ddebug=false -Dquarkus.live-reload.url=http://localhost:8080 -Dquarkus.live-reload.password=123 -Dquarkus.package.type=mutable-jar
 
 ENTRYPOINT [ "java", "-jar", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005", "-Dquarkus.http.host=0.0.0.0", "-Dquarkus.http.port=8080", "-Dquarkus.live-reload.password=123", "-Dquarkus.package.type=mutable-jar", "/code/target/quarkus-app/quarkus-run.jar"]
